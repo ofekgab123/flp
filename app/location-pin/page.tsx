@@ -27,9 +27,9 @@ export default function LocationPinPage() {
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
       : null;
-  const city = urlParams?.get("city") ?? "";
-  const street = urlParams?.get("street") ?? "";
-  const house = urlParams?.get("house") ?? "";
+  const city = urlParams?.get("$city") ?? "";
+  const street = urlParams?.get("$street") ?? "";
+  const house = urlParams?.get("$house") ?? "";
   const callback_url = urlParams?.get("callback_url") ?? "";
 
   const geocodeAddress = useCallback(async (address: string) => {

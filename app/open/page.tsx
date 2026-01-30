@@ -3,16 +3,24 @@
 import { useEffect } from "react";
 
 /**
- * /open?city=...&street=... → מפנה באותו חלון לדף המפה (/location-pin).
+ * /open?$city=...&$street=...&$house=... → מפנה באותו חלון לדף המפה (/location-pin).
+ * רק הפרמטרים $city, $street, $house מועברים – בלי השאר.
  */
 export default function OpenPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const urlParams = new URLSearchParams(window.location.search);
-    urlParams.set("in_popup", "true");
+    const params = new URLSearchParams();
+    const city = urlParams.get("$city");
+    const street = urlParams.get("$street");
+    const house = urlParams.get("$house");
+    if (city) params.set("$city", city);
+    if (street) params.set("$street", street);
+    if (house) params.set("$house", house);
+    params.set("in_popup", "true");
 
-    const locationPinUrl = `${window.location.origin}/location-pin?${urlParams.toString()}`;
+    const locationPinUrl = `${window.location.origin}/location-pin?${params.toString()}`;
     window.location.replace(locationPinUrl);
   }, []);
 

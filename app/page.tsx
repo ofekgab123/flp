@@ -5,9 +5,9 @@ export default function HomePage() {
         Location Pin – דקירת נקודת ציון
       </h1>
       <p className="max-w-md text-center text-sm text-slate-600">
-        לפתיחת חלון במפה: <code className="rounded bg-slate-200 px-1">/open?city=...&street=...&house=...</code>
+        לפתיחת חלון במפה: <code className="rounded bg-slate-200 px-1">/open?$city=...&$street=...&$house=...</code>
         <br />
-        API: <code className="rounded bg-slate-200 px-1">GET /api/location-pin?city=...&street=...</code> מחזיר <code className="rounded bg-slate-200 px-1">url</code> + 25% מידות.
+        API: <code className="rounded bg-slate-200 px-1">GET /api/location-pin?$city=...&$street=...&$house=...</code> מחזיר <code className="rounded bg-slate-200 px-1">url</code> + 25% מידות.
       </p>
     </div>
   );
