@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function HomePage() {
+function HomeContent() {
   const searchParams = useSearchParams();
   const [redirecting, setRedirecting] = useState(false);
 
@@ -38,5 +38,22 @@ export default function HomePage() {
         API: <code className="rounded bg-slate-200 px-1">GET /api/location-pin?$city=...&$street=...&$house=...</code> מחזיר <code className="rounded bg-slate-200 px-1">url</code> + 25% מידות.
       </p>
     </div>
+  );
+}
+
+const fallback = (
+  <div className="flex min-h-screen items-center justify-center bg-slate-100">
+    <div className="flex items-center gap-2 text-slate-500">
+      <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+      <span>טוען...</span>
+    </div>
+  </div>
+);
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={fallback}>
+      <HomeContent />
+    </Suspense>
   );
 }
