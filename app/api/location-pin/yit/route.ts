@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const YIT_API =
-  "https://interfaceserviceapi.y-it.co.il/FcApiService/AddressCoordinates";
+  "https://interfaceserviceapi.y-it.co.il/FcApiService/FcApiService.svc/InvokeFcApiService";
 const AUTH_TOKEN = "b380dc34-6754-4b50-8a35-cd714f201d6a";
 
 /**
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     });
 
     const text = await response.text();
-    let fullResponse: unknown;
+    let fullResponse: { isSuccess?: boolean; message?: string; code?: number; data?: { returnCode?: number } };
     try {
       fullResponse = text ? JSON.parse(text) : {};
     } catch {
@@ -75,22 +75,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const code = Number(
-      (fullResponse as { errorCode?: number; error?: number })?.errorCode ??
-        (fullResponse as { error?: number })?.error ??
-        99
-    );
+    const code = Number(fullResponse.code ?? 99);
     const errorMessages: Record<number, string> = {
       0: "הועבר בהצלחה",
-      1: "שדה עיר חסר",
-      2: "קו רוחב חסר",
-      3: "קו אורך חסר",
+      1: "שדה עיר חסר ($city)",
+      2: "קו רוחב חסר ($lat)",
+      3: "קו אורך חסר ($lng)",
       99: "שגיאת SQL",
     };
-    const message = errorMessages[code] ?? "שגיאה לא ידועה";
+    const message = fullResponse.message ?? errorMessages[code] ?? "שגיאה לא ידועה";
 
     return NextResponse.json({
-      success: code === 0,
+      success: code === 0 || fullResponse.isSuccess === true,
       message,
       fullResponse,
     });

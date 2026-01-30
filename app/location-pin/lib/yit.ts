@@ -1,5 +1,7 @@
 const YIT_API =
-  "https://interfaceserviceapi.y-it.co.il/FcApiService/AddressCoordinates";
+  "https://interfaceserviceapi.y-it.co.il/FcApiService/FcApiService.svc/InvokeFcApiService";
+
+/** Token מיועד לסביבת פיתוח בלבד – ב-production להגדיר NEXT_PUBLIC_YIT_AUTH_TOKEN */
 const YIT_AUTH_TOKEN =
   process.env.NEXT_PUBLIC_YIT_AUTH_TOKEN ??
   "b380dc34-6754-4b50-8a35-cd714f201d6a";
@@ -20,14 +22,15 @@ export interface SendToYITResult {
 
 const ERROR_MESSAGES: Record<number, string> = {
   0: "הועבר בהצלחה",
-  1: "שדה עיר חסר",
-  2: "קו רוחב חסר",
-  3: "קו אורך חסר",
+  1: "שדה עיר חסר ($city)",
+  2: "קו רוחב חסר ($lat)",
+  3: "קו אורך חסר ($lng)",
   99: "שגיאת SQL",
 };
 
 /**
- * Sends location directly to YIT API (original endpoint).
+ * שולח מיקום ל-YIT לאחר לחיצה על "שמור מיקום".
+ * פרמטרים: authenticationToken (בלי $), $action, $updateObject, $city, $street, $house, $lat, $lng.
  */
 export async function sendToYIT(data: SendToYITParams): Promise<SendToYITResult> {
   try {
@@ -49,7 +52,7 @@ export async function sendToYIT(data: SendToYITParams): Promise<SendToYITResult>
     });
 
     const text = await response.text();
-    let fullResponse: unknown;
+    let fullResponse: { isSuccess?: boolean; message?: string; code?: number; data?: { returnCode?: number } };
     try {
       fullResponse = text ? JSON.parse(text) : {};
     } catch {
@@ -60,15 +63,12 @@ export async function sendToYIT(data: SendToYITParams): Promise<SendToYITResult>
       };
     }
 
-    const code = Number(
-      (fullResponse as { errorCode?: number })?.errorCode ??
-        (fullResponse as { error?: number })?.error ??
-        99
-    );
-    const message = ERROR_MESSAGES[code] ?? "שגיאה לא ידועה";
+    const code = Number(fullResponse.code ?? 99);
+    const message =
+      fullResponse.message ?? ERROR_MESSAGES[code] ?? "שגיאה לא ידועה";
 
     return {
-      success: code === 0,
+      success: code === 0 || fullResponse.isSuccess === true,
       message,
       fullResponse,
     };
