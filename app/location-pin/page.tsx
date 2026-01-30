@@ -111,7 +111,7 @@ export default function LocationPinPage() {
 
   return (
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-1 sm:p-2">
-      <div className="flex h-[70vh] w-[25vw] min-h-[320px] min-w-[280px] max-h-[98vh] max-w-[98vw] flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
+      <div className="flex h-[650px] w-[450px] max-h-[98vh] max-w-[98vw] flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
       <header className="flex shrink-0 items-center gap-3 bg-blue-600 px-4 py-3 text-white">
         <div className="flex h-9 w-9 items-center justify-center">
           <MapPin className="h-5 w-5" />

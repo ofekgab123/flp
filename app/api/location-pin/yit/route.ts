@@ -33,13 +33,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const host = request.headers.get("host") ?? "";
-  const isLocalhost =
-    host.startsWith("localhost") ||
-    host.startsWith("127.0.0.1") ||
-    process.env.MOCK_YIT === "true";
-
-  if (isLocalhost) {
+  if (process.env.MOCK_YIT === "true") {
     return NextResponse.json({
       success: true,
       message: "הועבר בהצלחה (מצב פיתוח – לא נשלח ל-YIT)",
