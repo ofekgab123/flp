@@ -3,21 +3,29 @@
 import { useEffect } from "react";
 
 /**
- * /open?$city=...&$street=...&$house=... → מפנה באותו חלון לדף המפה (/location-pin).
- * רק הפרמטרים $city, $street, $house מועברים – בלי השאר.
+ * /open?city=...&street=...&house=... (או $city, $street, $house) → מפנה לדף המפה (/location-pin).
+ * תומך גם בפורמט הישן (בלי $) וגם ב-address_type, callback_url.
  */
+function getParam(sp: URLSearchParams, a: string, b: string): string | null {
+  return sp.get(a) ?? sp.get(b);
+}
+
 export default function OpenPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const urlParams = new URLSearchParams(window.location.search);
     const params = new URLSearchParams();
-    const city = urlParams.get("$city");
-    const street = urlParams.get("$street");
-    const house = urlParams.get("$house");
+    const city = getParam(urlParams, "$city", "city");
+    const street = getParam(urlParams, "$street", "street");
+    const house = getParam(urlParams, "$house", "house");
+    const address_type = urlParams.get("address_type");
+    const callback_url = urlParams.get("callback_url");
     if (city) params.set("$city", city);
     if (street) params.set("$street", street);
     if (house) params.set("$house", house);
+    if (address_type) params.set("address_type", address_type);
+    if (callback_url) params.set("callback_url", callback_url);
     params.set("in_popup", "true");
 
     const locationPinUrl = `${window.location.origin}/location-pin?${params.toString()}`;
