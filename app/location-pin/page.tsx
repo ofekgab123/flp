@@ -30,7 +30,6 @@ export default function LocationPinPage() {
   const city = urlParams?.get("$city") ?? urlParams?.get("city") ?? "";
   const street = urlParams?.get("$street") ?? urlParams?.get("street") ?? "";
   const house = urlParams?.get("$house") ?? urlParams?.get("house") ?? "";
-  const callback_url = urlParams?.get("callback_url") ?? "";
 
   const geocodeAddress = useCallback(async (address: string) => {
     const addr = address?.trim();
@@ -86,17 +85,6 @@ export default function LocationPinPage() {
         lat: position.lat,
         lng: position.lng,
       });
-
-      if (callback_url) {
-        const params = new URLSearchParams();
-        params.set("lat", position.lat.toString());
-        params.set("lng", position.lng.toString());
-        params.set("yit_success", result.success ? "1" : "0");
-        params.set("yit_message", result.message);
-        const sep = callback_url.includes("?") ? "&" : "?";
-        window.location.href = `${callback_url}${sep}${params.toString()}`;
-        return;
-      }
 
       setYitResultDialog({
         isOpen: true,
@@ -180,6 +168,11 @@ export default function LocationPinPage() {
                 <XCircle className="h-12 w-12 text-red-500" />
               )}
               <p className="font-medium text-slate-800">{yitResultDialog.message}</p>
+              <p className="text-sm text-slate-600">
+                {yitResultDialog.success
+                  ? "הנתונים נשמרו ב-YIT"
+                  : "הנתונים לא נשמרו ב-YIT"}
+              </p>
               {yitResultDialog.response != null && (
                 <pre className="w-full max-h-32 overflow-auto rounded bg-slate-100 p-2 text-left text-xs text-slate-600">
                   {JSON.stringify(yitResultDialog.response, null, 2)}
