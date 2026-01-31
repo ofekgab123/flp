@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { MapPin, Loader2, Check, CheckCircle, XCircle, X } from "lucide-react";
+import { MapPin, Loader2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainerClient } from "./MapContainerClient";
 import { sendToYIT, YIT_DEFAULT_API_URL } from "./lib/yit";
@@ -17,12 +17,6 @@ export default function LocationPinPage() {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>(DEFAULT_CENTER);
-  const [yitResultDialog, setYitResultDialog] = useState<{
-    isOpen: boolean;
-    success: boolean;
-    message: string;
-    response: unknown;
-  }>({ isOpen: false, success: false, message: "", response: null });
 
   const urlParams =
     typeof window !== "undefined"
@@ -121,14 +115,11 @@ export default function LocationPinPage() {
         baseUrl: yitBaseUrl.trim() || undefined,
       });
 
-      setYitResultDialog({
-        isOpen: true,
-        success: result.success,
-        message: result.message,
-        response: result.fullResponse,
-      });
+      if (result.success) {
+        window.close();
+      }
     } catch {
-      toast.error("שגיאת תקשורת עם YIT");
+      // שליחה נכשלה – בלי פופ־אפ
     }
   };
 
@@ -266,41 +257,6 @@ export default function LocationPinPage() {
           </p>
         )}
       </footer>
-
-      {yitResultDialog.isOpen && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex flex-col items-center gap-3 text-center">
-              {yitResultDialog.success ? (
-                <CheckCircle className="h-12 w-12 text-green-500" />
-              ) : (
-                <XCircle className="h-12 w-12 text-red-500" />
-              )}
-              <p className="font-medium text-slate-800">{yitResultDialog.message}</p>
-              <p className="text-sm text-slate-600">
-                {yitResultDialog.success
-                  ? "הנתונים נשמרו ב-YIT"
-                  : "הנתונים לא נשמרו ב-YIT"}
-              </p>
-              {yitResultDialog.response != null && (
-                <pre className="w-full max-h-32 overflow-auto rounded bg-slate-100 p-2 text-left text-xs text-slate-600">
-                  {JSON.stringify(yitResultDialog.response, null, 2)}
-                </pre>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setYitResultDialog((prev) => ({ ...prev, isOpen: false }));
-                  window.close();
-                }}
-                className="mt-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
-              >
-                סגור
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   );

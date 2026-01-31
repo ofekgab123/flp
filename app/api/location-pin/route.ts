@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * GET /api/location-pin
- * Query: clientToken?, $city / city, $street / street, $house / house, address_type?, callback_url?
+ * Query: clientToken?, $city / city, $street / street, $house / house, callback_url?
  * Supports both formats: $city=... and city=...
  * Returns JSON: { url, widthPercent, heightPercent, openInNewWindow }.
  * IMPORTANT: Open the returned `url` in the popup (it points to /location-pin), NOT this API path (/api/location-pin).
@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
   const street = getParam(searchParams, "$street", "street");
   const house = getParam(searchParams, "$house", "house");
   const clientToken = searchParams.get("clientToken") ?? "";
-  const address_type = searchParams.get("address_type") ?? "";
   const callback_url = searchParams.get("callback_url") ?? "";
 
   const base =
@@ -30,9 +29,7 @@ export async function GET(request: NextRequest) {
   if (city) params.set("$city", city);
   if (street) params.set("$street", street);
   if (house) params.set("$house", house);
-  if (address_type) params.set("address_type", address_type);
   if (callback_url) params.set("callback_url", callback_url);
-  params.set("in_popup", "true");
 
   const locationPinPath = `/location-pin?${params.toString()}`;
   const url = `${base}${locationPinPath}`;

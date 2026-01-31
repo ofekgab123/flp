@@ -24,7 +24,6 @@ npm run dev
 | `city`       | עיר (חובה)                      |
 | `street`     | רחוב (חובה)                     |
 | `house`      | מספר בית (אופציונלי)            |
-| `address_type` | `pickup` / `dropoff` (אופציונלי) |
 | `callback_url` | URL לחזרה אחרי שמירה (אופציונלי) |
 
 **דוגמה:**
@@ -37,7 +36,7 @@ GET /api/location-pin?city=תל%20אביב&street=דיזנגוף&house=50&callba
 
 ```json
 {
-  "url": "http://localhost:3000/location-pin?city=...&in_popup=true",
+  "url": "http://localhost:3000/location-pin?city=...",
   "widthPercent": 25,
   "heightPercent": 25,
   "openInNewWindow": true
@@ -57,9 +56,9 @@ window.open(url, '_blank', `width=${w},height=${h},...`);
 ## דפים
 
 - **`/open?city=...&street=...&house=...&callback_url=...`**  
-  נטען כשמערכת חיצונית מפנה אליו. פותח אוטומטית חלון 25% עם `/location-pin?...&in_popup=true` ומציג "החלון נפתח" בדף הנוכחי.
+  נטען כשמערכת חיצונית מפנה אליו. מפנה אוטומטית ל־`/location-pin?...` (דף המפה).
 
-- **`/location-pin?city=...&street=...&in_popup=true&...`**  
+- **`/location-pin?city=...&street=...&...`**  
   המסך הראשי: חיפוש כתובת, מפה (OpenStreetMap), סימון נקודה, שמירה ל-YIT. אם יש `callback_url` – מפנה אליו עם קואורדינטות ותוצאת YIT; אחרת – דיאלוג תוצאה וכפתור "סגור" סוגר את החלון.
 
 ## טכנולוגיות
