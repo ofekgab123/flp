@@ -133,15 +133,15 @@ export default function LocationPinPage() {
   };
 
   if (isAdmin) {
-    let locationPinWithBaseUrl = "";
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      sp.delete("admin");
-      const baseToUse = yitBaseUrl.trim() || YIT_DEFAULT_API_URL;
-      sp.set("yitBaseUrl", baseToUse);
-      const q = sp.toString();
-      locationPinWithBaseUrl = `${window.location.origin}${window.location.pathname}?${q}`;
-    }
+    const handleSaveBaseUrl = () => {
+      const value = yitBaseUrl.trim() || YIT_DEFAULT_API_URL;
+      try {
+        localStorage.setItem(YIT_BASE_URL_STORAGE_KEY, value);
+        toast.success("Base URL נשמר. הבקשה הבאה (שמירת מיקום) תפנה לכתובת הזאת.");
+      } catch {
+        toast.error("שמירה נכשלה");
+      }
+    };
     return (
       <div className="min-h-screen bg-slate-100 p-4 sm:p-6">
         <div className="mx-auto max-w-2xl">
@@ -150,7 +150,7 @@ export default function LocationPinPage() {
               הגדרות API – שמירת מיקום
             </h1>
             <p className="mb-4 text-sm text-slate-500">
-              ערוך את כתובת ה-API. בלחיצה על &quot;ערוך&quot; ההפניה למסך המפה תשתמש ב-Base URL שהוזן.
+              ערוך את כתובת ה-API ולחץ &quot;ערוך&quot;. ה-Base URL ישתנה במערכת – הבקשה הבאה בלחיצה על &quot;שמור מיקום&quot; תפנה לכתובת הזאת.
             </p>
             <div className="flex flex-col gap-3">
               <div>
@@ -176,19 +176,11 @@ export default function LocationPinPage() {
             <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
               <button
                 type="button"
-                onClick={() => {
-                  if (locationPinWithBaseUrl) window.location.href = locationPinWithBaseUrl;
-                }}
+                onClick={handleSaveBaseUrl}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
               >
-                ערוך – מעבר למסך המפה עם Base URL זה
+                ערוך
               </button>
-              <a
-                href={locationPinWithBaseUrl}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:no-underline"
-              >
-                למסך המפה
-              </a>
               <button
                 type="button"
                 onClick={() => setYitBaseUrl(YIT_DEFAULT_API_URL)}
