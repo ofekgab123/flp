@@ -1,4 +1,4 @@
-const YIT_API =
+export const YIT_DEFAULT_API_URL =
   "https://interfaceserviceapi.y-it.co.il/FcApiService/FcApiService.svc/InvokeFcApiService";
 
 export interface SendToYITParams {
@@ -9,6 +9,8 @@ export interface SendToYITParams {
   lng: number;
   /** נדרש – נשלח ל-YIT בשדה authenticationToken. ללא token מחזיר שגיאה. */
   token: string;
+  /** כתובת בסיס ל-API – אם לא מועבר משתמש ב-YIT_DEFAULT_API_URL */
+  baseUrl?: string;
 }
 
 export interface SendToYITResult {
@@ -56,6 +58,8 @@ export async function sendToYIT(data: SendToYITParams): Promise<SendToYITResult>
     };
   }
 
+  const apiUrl = (data.baseUrl ?? "").trim() || YIT_DEFAULT_API_URL;
+
   try {
     const formData = new URLSearchParams({
       authenticationToken: token,
@@ -68,7 +72,7 @@ export async function sendToYIT(data: SendToYITParams): Promise<SendToYITResult>
       $lng: data.lng.toString(),
     });
 
-    const response = await fetch(YIT_API, {
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: formData.toString(),

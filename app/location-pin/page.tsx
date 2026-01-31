@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { MapPin, Loader2, Check, CheckCircle, XCircle } from "lucide-react";
+import { MapPin, Loader2, Check, CheckCircle, XCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainerClient } from "./MapContainerClient";
-import { sendToYIT } from "./lib/yit";
+import { sendToYIT, YIT_DEFAULT_API_URL } from "./lib/yit";
 
 const DEFAULT_CENTER: [number, number] = [32.0853, 34.7818]; // Tel Aviv
 const DEFAULT_ADDRESS = "דיזנגוף 150, תל אביב";
+const YIT_BASE_URL_STORAGE_KEY = "location-pin-yitBaseUrl";
 
 export default function LocationPinPage() {
   const [editableAddress, setEditableAddress] = useState(DEFAULT_ADDRESS);
@@ -27,10 +28,29 @@ export default function LocationPinPage() {
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
       : null;
+  const isAdmin = urlParams?.get("admin") != null && urlParams?.get("admin") !== "false";
   const clientToken = urlParams?.get("clientToken") ?? "";
   const city = urlParams?.get("$city") ?? urlParams?.get("city") ?? "";
   const street = urlParams?.get("$street") ?? urlParams?.get("street") ?? "";
   const house = urlParams?.get("$house") ?? urlParams?.get("house") ?? "";
+
+  const [yitBaseUrl, setYitBaseUrl] = useState(YIT_DEFAULT_API_URL);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("yitBaseUrl");
+    const fromStorage = localStorage.getItem(YIT_BASE_URL_STORAGE_KEY);
+    const initial = fromUrl || fromStorage || YIT_DEFAULT_API_URL;
+    setYitBaseUrl(initial);
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined" || !yitBaseUrl) return;
+    try {
+      localStorage.setItem(YIT_BASE_URL_STORAGE_KEY, yitBaseUrl);
+    } catch {
+      /* ignore */
+    }
+  }, [yitBaseUrl]);
 
   const geocodeAddress = useCallback(async (address: string) => {
     const addr = address?.trim();
@@ -98,6 +118,7 @@ export default function LocationPinPage() {
         lat: position.lat,
         lng: position.lng,
         token: clientToken,
+        baseUrl: yitBaseUrl.trim() || undefined,
       });
 
       setYitResultDialog({
@@ -111,14 +132,96 @@ export default function LocationPinPage() {
     }
   };
 
+  if (isAdmin) {
+    let locationPinWithBaseUrl = "";
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      sp.delete("admin");
+      const baseToUse = yitBaseUrl.trim() || YIT_DEFAULT_API_URL;
+      sp.set("yitBaseUrl", baseToUse);
+      const q = sp.toString();
+      locationPinWithBaseUrl = `${window.location.origin}${window.location.pathname}?${q}`;
+    }
+    return (
+      <div className="min-h-screen bg-slate-100 p-4 sm:p-6">
+        <div className="mx-auto max-w-2xl">
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h1 className="mb-2 text-lg font-semibold text-slate-800">
+              הגדרות API – שמירת מיקום
+            </h1>
+            <p className="mb-4 text-sm text-slate-500">
+              ערוך את כתובת ה-API. בלחיצה על &quot;ערוך&quot; ההפניה למסך המפה תשתמש ב-Base URL שהוזן.
+            </p>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Base URL
+                </label>
+                <input
+                  type="url"
+                  value={yitBaseUrl}
+                  onChange={(e) => setYitBaseUrl(e.target.value)}
+                  placeholder={YIT_DEFAULT_API_URL}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  dir="ltr"
+                />
+              </div>
+              <div className="rounded-lg bg-slate-50 px-3 py-2">
+                <span className="text-xs font-medium text-slate-500">כתובת מלאה: </span>
+                <code className="break-all text-xs text-slate-700" dir="ltr">
+                  {yitBaseUrl.trim() || YIT_DEFAULT_API_URL}
+                </code>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  if (locationPinWithBaseUrl) window.location.href = locationPinWithBaseUrl;
+                }}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                ערוך – מעבר למסך המפה עם Base URL זה
+              </button>
+              <a
+                href={locationPinWithBaseUrl}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:no-underline"
+              >
+                למסך המפה
+              </a>
+              <button
+                type="button"
+                onClick={() => setYitBaseUrl(YIT_DEFAULT_API_URL)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                איפוס לברירת מחדל
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-1 sm:p-2">
       <div className="flex h-[650px] w-[450px] max-h-[98vh] max-w-[98vw] flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
-      <header className="flex shrink-0 items-center gap-3 bg-blue-600 px-4 py-3 text-white">
-        <div className="flex h-9 w-9 items-center justify-center">
-          <MapPin className="h-5 w-5" />
+      <header className="flex shrink-0 items-center justify-between gap-3 bg-blue-600 px-4 py-3 text-white">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center">
+            <MapPin className="h-5 w-5" />
+          </div>
+          <span className="text-lg font-semibold">דקירת נקודת ציון</span>
         </div>
-        <span className="text-lg font-semibold">דקירת נקודת ציון</span>
+        <button
+          type="button"
+          onClick={() => window.close()}
+          title="סגור"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/20 hover:text-white"
+          aria-label="סגור"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </header>
 
       <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-white p-3">
@@ -155,7 +258,7 @@ export default function LocationPinPage() {
         />
       </div>
 
-      <footer className="flex shrink-0 flex-col gap-1 border-t border-slate-200 bg-white p-3">
+      <footer className="flex shrink-0 flex-col gap-2 border-t border-slate-200 bg-white p-3">
         <button
           type="button"
           onClick={handleSave}
