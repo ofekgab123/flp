@@ -19,8 +19,10 @@ export default function OpenPage() {
     const city = getParam(urlParams, "$city", "city");
     const street = getParam(urlParams, "$street", "street");
     const house = getParam(urlParams, "$house", "house");
+    const clientToken = urlParams.get("clientToken");
     const address_type = urlParams.get("address_type");
     const callback_url = urlParams.get("callback_url");
+    if (clientToken) params.set("clientToken", clientToken);
     if (city) params.set("$city", city);
     if (street) params.set("$street", street);
     if (house) params.set("$house", house);

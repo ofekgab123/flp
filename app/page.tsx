@@ -33,9 +33,9 @@ function HomeContent() {
         Location Pin – דקירת נקודת ציון
       </h1>
       <p className="max-w-md text-center text-sm text-slate-600">
-        לפתיחת חלון במפה: <code className="rounded bg-slate-200 px-1">/open?$city=...&$street=...&$house=...</code> או <code className="rounded bg-slate-200 px-1">city=...&street=...&house=...</code>
+        לפתיחת חלון במפה: <code className="rounded bg-slate-200 px-1">/open?clientToken=...&amp;$city=...&amp;$street=...&amp;$house=...</code> או <code className="rounded bg-slate-200 px-1">city=...&amp;street=...&amp;house=...</code>
         <br />
-        API: <code className="rounded bg-slate-200 px-1">GET /api/location-pin?$city=...&$street=...&$house=...</code> מחזיר <code className="rounded bg-slate-200 px-1">url</code> + 25% מידות.
+        API: <code className="rounded bg-slate-200 px-1">GET /api/location-pin?clientToken=...&amp;$city=...&amp;$street=...&amp;$house=...</code> מחזיר <code className="rounded bg-slate-200 px-1">url</code> + 25% מידות. <code className="rounded bg-slate-200 px-1">clientToken</code> מועבר ל-YIT בשדה token.
       </p>
     </div>
   );

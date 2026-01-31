@@ -27,6 +27,7 @@ export default function LocationPinPage() {
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
       : null;
+  const clientToken = urlParams?.get("clientToken") ?? "";
   const city = urlParams?.get("$city") ?? urlParams?.get("city") ?? "";
   const street = urlParams?.get("$street") ?? urlParams?.get("street") ?? "";
   const house = urlParams?.get("$house") ?? urlParams?.get("house") ?? "";
@@ -76,6 +77,18 @@ export default function LocationPinPage() {
       toast.error("נא לבחור מיקום על המפה");
       return;
     }
+    if (!clientToken.trim()) {
+      toast.error("לא נשלח token – יש לצרף clientToken בכתובת ה-URL");
+      return;
+    }
+    if (!city.trim()) {
+      toast.error("שדה עיר חסר ($city)");
+      return;
+    }
+    if (!street.trim()) {
+      toast.error("שדה רחוב חסר ($street)");
+      return;
+    }
 
     try {
       const result = await sendToYIT({
@@ -84,6 +97,7 @@ export default function LocationPinPage() {
         house: house || undefined,
         lat: position.lat,
         lng: position.lng,
+        token: clientToken,
       });
 
       setYitResultDialog({

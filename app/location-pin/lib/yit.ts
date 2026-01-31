@@ -1,17 +1,14 @@
 const YIT_API =
   "https://interfaceserviceapi.y-it.co.il/FcApiService/FcApiService.svc/InvokeFcApiService";
 
-/** Token מיועד לסביבת פיתוח בלבד – ב-production להגדיר NEXT_PUBLIC_YIT_AUTH_TOKEN */
-const YIT_AUTH_TOKEN =
-  process.env.NEXT_PUBLIC_YIT_AUTH_TOKEN ??
-  "b380dc34-6754-4b50-8a35-cd714f201d6a";
-
 export interface SendToYITParams {
   city: string;
   street: string;
   house?: string;
   lat: number;
   lng: number;
+  /** נדרש – נשלח ל-YIT בשדה authenticationToken. ללא token מחזיר שגיאה. */
+  token: string;
 }
 
 export interface SendToYITResult {
@@ -30,16 +27,42 @@ const ERROR_MESSAGES: Record<number, string> = {
 
 /**
  * שולח מיקום ל-YIT לאחר לחיצה על "שמור מיקום".
- * פרמטרים: authenticationToken (בלי $), $action, $updateObject, $city, $street, $house, $lat, $lng.
+ * ללא token / עיר / רחוב – מחזיר שגיאה מיידית, לא קורא ל-API.
  */
 export async function sendToYIT(data: SendToYITParams): Promise<SendToYITResult> {
+  const token = (data.token ?? "").trim();
+  const city = (data.city ?? "").trim();
+  const street = (data.street ?? "").trim();
+
+  if (!token) {
+    return {
+      success: false,
+      message: "לא נשלח token – יש לצרף clientToken בכתובת ה-URL",
+      fullResponse: { _validation: "missing_token" },
+    };
+  }
+  if (!city) {
+    return {
+      success: false,
+      message: "שדה עיר חסר ($city)",
+      fullResponse: { _validation: "missing_city" },
+    };
+  }
+  if (!street) {
+    return {
+      success: false,
+      message: "שדה רחוב חסר ($street)",
+      fullResponse: { _validation: "missing_street" },
+    };
+  }
+
   try {
     const formData = new URLSearchParams({
-      authenticationToken: YIT_AUTH_TOKEN,
+      authenticationToken: token,
       $action: "set",
       $updateObject: "AddressCoordinates",
-      $city: data.city,
-      $street: data.street,
+      $city: city,
+      $street: street,
       $house: data.house ?? "",
       $lat: data.lat.toString(),
       $lng: data.lng.toString(),
