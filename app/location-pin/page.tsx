@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { MapPin, Loader2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainerClient } from "./MapContainerClient";
-import { sendToYIT, YIT_DEFAULT_API_URL } from "./lib/yit";
+import { sendToYIT, YIT_DEFAULT_API_URL, isValidClientToken, isAllowedClientToken } from "./lib/yit";
 
 const DEFAULT_CENTER: [number, number] = [32.0853, 34.7818]; // Tel Aviv
 const DEFAULT_ADDRESS = "דיזנגוף 150, תל אביב";
@@ -93,6 +93,14 @@ export default function LocationPinPage() {
     }
     if (!clientToken.trim()) {
       toast.error("לא נשלח token – יש לצרף clientToken בכתובת ה-URL");
+      return;
+    }
+    if (!isValidClientToken(clientToken)) {
+      toast.error("clientToken לא תקין");
+      return;
+    }
+    if (!isAllowedClientToken(clientToken)) {
+      toast.error("clientToken לא קיים במערכת");
       return;
     }
     if (!city.trim()) {

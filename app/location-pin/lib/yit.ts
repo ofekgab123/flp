@@ -1,6 +1,22 @@
 export const YIT_DEFAULT_API_URL =
   "https://interfaceserviceapi.y-it.co.il/FcApiService/FcApiService.svc/InvokeFcApiService";
 
+/** מבנה UUID: 8-4-4-4-12 תווים hex (לדוגמה b380dc34-6754-4b50-8a35-cd714f201d6a) */
+const CLIENT_TOKEN_UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isValidClientToken(value: string): boolean {
+  return CLIENT_TOKEN_UUID_REGEX.test((value ?? "").trim());
+}
+
+/** ה־clientToken היחיד המורשה במערכת */
+export const ALLOWED_CLIENT_TOKEN =
+  "b380dc34-6754-4b50-8a35-cd714f201d6a";
+
+export function isAllowedClientToken(value: string): boolean {
+  return (value ?? "").trim().toLowerCase() === ALLOWED_CLIENT_TOKEN.toLowerCase();
+}
+
 export interface SendToYITParams {
   city: string;
   street: string;
@@ -41,6 +57,20 @@ export async function sendToYIT(data: SendToYITParams): Promise<SendToYITResult>
       success: false,
       message: "לא נשלח token – יש לצרף clientToken בכתובת ה-URL",
       fullResponse: { _validation: "missing_token" },
+    };
+  }
+  if (!isValidClientToken(token)) {
+    return {
+      success: false,
+      message: "clientToken לא תקין",
+      fullResponse: { _validation: "invalid_client_token" },
+    };
+  }
+  if (!isAllowedClientToken(token)) {
+    return {
+      success: false,
+      message: "clientToken לא קיים במערכת",
+      fullResponse: { _validation: "client_token_not_allowed" },
     };
   }
   if (!city) {
