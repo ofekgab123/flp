@@ -1,42 +1,64 @@
-"use client";
+import { redirect } from "next/navigation";
+import { validateOtp } from "@/lib/otp";
 
-import { useEffect } from "react";
+function getParam(
+  params: Record<string, string | string[] | undefined>,
+  a: string,
+  b: string
+): string {
+  const v = params[a] ?? params[b];
+  return Array.isArray(v) ? v[0] ?? "" : (v ?? "");
+}
 
 /**
  * /open?city=...&street=...&house=... (או $city, $street, $house) → מפנה לדף המפה (/location-pin).
  * תומך גם בפורמט הישן (בלי $) וגם ב-callback_url.
+ * כשיש clientToken – נדרשים otp ו-otphash. הבדיקה מתבצעת בכניסה.
  */
-function getParam(sp: URLSearchParams, a: string, b: string): string | null {
-  return sp.get(a) ?? sp.get(b);
-}
+export default async function OpenPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const city = getParam(params, "$city", "city");
+  const street = getParam(params, "$street", "street");
+  const house = getParam(params, "$house", "house");
+  const clientToken = Array.isArray(params.clientToken)
+    ? params.clientToken[0] ?? ""
+    : (params.clientToken ?? "");
+  const callback_url = Array.isArray(params.callback_url)
+    ? params.callback_url[0] ?? ""
+    : (params.callback_url ?? "");
+  const otp = Array.isArray(params.otp) ? params.otp[0] ?? "" : (params.otp ?? "");
+  const otphash = Array.isArray(params.otphash)
+    ? params.otphash[0] ?? ""
+    : (params.otphash ?? "");
 
-export default function OpenPage() {
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  if (clientToken) {
+    const otpResult = validateOtp(otp, otphash);
+    if (!otpResult.valid) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-slate-100">
+          <div className="rounded-lg border border-red-200 bg-white p-6 shadow-sm">
+            <p className="text-red-600 font-medium">{otpResult.error}</p>
+            <p className="mt-2 text-sm text-slate-500">
+              הקישור פג תוקף או שאינו תקין. נא לפתוח מחדש מפני המערכת החיצונית.
+            </p>
+          </div>
+        </div>
+      );
+    }
+  }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const params = new URLSearchParams();
-    const city = getParam(urlParams, "$city", "city");
-    const street = getParam(urlParams, "$street", "street");
-    const house = getParam(urlParams, "$house", "house");
-    const clientToken = urlParams.get("clientToken");
-    const callback_url = urlParams.get("callback_url");
-    if (clientToken) params.set("clientToken", clientToken);
-    if (city) params.set("$city", city);
-    if (street) params.set("$street", street);
-    if (house) params.set("$house", house);
-    if (callback_url) params.set("callback_url", callback_url);
+  const urlParams = new URLSearchParams();
+  if (clientToken) urlParams.set("clientToken", clientToken);
+  if (otp) urlParams.set("otp", otp);
+  if (otphash) urlParams.set("otphash", otphash);
+  if (city) urlParams.set("$city", city);
+  if (street) urlParams.set("$street", street);
+  if (house) urlParams.set("$house", house);
+  if (callback_url) urlParams.set("callback_url", callback_url);
 
-    const locationPinUrl = `${window.location.origin}/location-pin?${params.toString()}`;
-    window.location.replace(locationPinUrl);
-  }, []);
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100">
-      <div className="flex items-center gap-2 text-slate-500">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-        <span>טוען מפה...</span>
-      </div>
-    </div>
-  );
+  redirect(`/location-pin?${urlParams.toString()}`);
 }

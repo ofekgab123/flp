@@ -21,15 +21,20 @@ npm run dev
 
 | פרמטר        | תיאור                          |
 |--------------|---------------------------------|
+| `clientToken` | טוקן לקוח (חובה כשמשתמשים ב-YIT) |
+| `otp`        | אבטחה: Unix timestamp + 300 שניות (חובה עם clientToken) |
+| `otphash`    | אבטחה: MD5 של otp (חובה עם clientToken) |
 | `city`       | עיר (חובה)                      |
 | `street`     | רחוב (חובה)                     |
 | `house`      | מספר בית (אופציונלי)            |
 | `callback_url` | URL לחזרה אחרי שמירה (אופציונלי) |
 
+**OTP:** `otp` = `seconds('1970-01-01 00:00', CURRENT_UTC_TIMESTAMP) + (5 * 60)`. הקישור תקף 5 דקות. `otphash` = MD5('**' + otp + '!!').
+
 **דוגמה:**
 
 ```http
-GET /api/location-pin?city=תל%20אביב&street=דיזנגוף&house=50&callback_url=https://...
+GET /api/location-pin?clientToken=xxx&otp=1772892222&otphash=d86ab58b6df423cfd5f00c7b4a52fefc&city=תל%20אביב&street=דיזנגוף&house=50&callback_url=https://...
 ```
 
 **תגובה:**
