@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidClientToken } from "@/app/location-pin/lib/yit";
-import { clientExists } from "@/lib/db";
 import { validateOtp } from "@/lib/otp";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +11,8 @@ export const dynamic = "force-dynamic";
  * Returns JSON: { url, widthPercent, heightPercent, openInNewWindow }.
  * IMPORTANT: Open the returned `url` in the popup (it points to /location-pin), NOT this API path (/api/location-pin).
  * clientToken must be UUID format (8-4-4-4-12). If provided and invalid, returns 400 with "clientToken לא תקין".
- * When clientToken is provided. otp and otphash are required. otp = unix_timestamp + 300, otphash = MD5(otp).
+ * When clientToken is provided, otp and otphash are required. otp = unix_timestamp + 300, otphash = MD5(otp).
+ * בדיקת קיום clientToken במערכת נעשית רק בשמירת מיקום (POST /api/location-pin/save).
  */
 function getParam(sp: URLSearchParams, a: string, b: string): string {
   return sp.get(a) ?? sp.get(b) ?? "";
@@ -44,12 +44,7 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (clientToken && !(await clientExists(clientToken))) {
-    return NextResponse.json(
-      { error: "clientToken לא קיים במערכת" },
-      { status: 400 }
-    );
-  }
+  // בדיקת קיום clientToken נעשית רק בשמירת מיקום (POST /api/location-pin/save)
 
   const base =
     process.env.NEXT_PUBLIC_APP_URL ||
