@@ -7,3 +7,8 @@ node_modules/
 
 # Local data
 data/
+
+# Env (don't commit secrets)
+.env
+.env.local
+.env*.local

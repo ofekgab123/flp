@@ -3,6 +3,8 @@ import { isValidClientToken } from "@/app/location-pin/lib/yit";
 import { clientExists } from "@/lib/db";
 import { validateOtp } from "@/lib/otp";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/location-pin
  * Query: clientToken?, otp, otphash, $city / city, $street / street, $house / house, callback_url?
@@ -42,7 +44,7 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (clientToken && !clientExists(clientToken)) {
+  if (clientToken && !(await clientExists(clientToken))) {
     return NextResponse.json(
       { error: "clientToken לא קיים במערכת" },
       { status: 400 }

@@ -1,53 +1,57 @@
-import Database from "better-sqlite3";
-import path from "path";
-import fs from "fs";
+import { neon } from "@neondatabase/serverless";
 
-const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), "data", "clients.db");
+let _sql: ReturnType<typeof neon> | null = null;
 
-// Ensure the data directory exists
-const dbDir = path.dirname(DB_PATH);
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+function getSql() {
+  if (!_sql) {
+    const url = process.env.DATABASE_URL;
+    if (!url) throw new Error("DATABASE_URL is not set");
+    _sql = neon(url);
+  }
+  return _sql;
 }
 
-let _db: Database.Database | null = null;
+let _initDone = false;
 
-export function getDb(): Database.Database {
-  if (!_db) {
-    _db = new Database(DB_PATH);
-    _db.exec(`
+async function ensureInit() {
+  if (!_initDone) {
+    const sql = getSql();
+    await sql`
       CREATE TABLE IF NOT EXISTS clients (
-        clientToken TEXT PRIMARY KEY,
-        yitApiToken TEXT NOT NULL,
-        createdAt   TEXT NOT NULL DEFAULT (datetime('now'))
-      );
+        "clientToken" TEXT PRIMARY KEY,
+        "yitApiToken" TEXT NOT NULL,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`
       CREATE TABLE IF NOT EXISTS admin_settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
-      );
-    `);
+      )
+    `;
+    _initDone = true;
   }
-  return _db;
 }
 
-export function clientExists(clientToken: string): boolean {
-  const row = getDb()
-    .prepare("SELECT 1 FROM clients WHERE clientToken = ?")
-    .get(clientToken);
-  return !!row;
+export async function clientExists(clientToken: string): Promise<boolean> {
+  await ensureInit();
+  const sql = getSql();
+  const rows = (await sql`SELECT 1 FROM clients WHERE "clientToken" = ${clientToken}`) as unknown[];
+  return rows.length > 0;
 }
 
-export function getYitApiToken(clientToken: string): string | null {
-  const row = getDb()
-    .prepare("SELECT yitApiToken FROM clients WHERE clientToken = ?")
-    .get(clientToken) as { yitApiToken: string } | undefined;
+export async function getYitApiToken(clientToken: string): Promise<string | null> {
+  await ensureInit();
+  const sql = getSql();
+  const rows = (await sql`SELECT "yitApiToken" FROM clients WHERE "clientToken" = ${clientToken}`) as { yitApiToken: string }[];
+  const row = rows[0];
   return row?.yitApiToken ?? null;
 }
 
-export function insertClient(clientToken: string, yitApiToken: string): void {
-  getDb()
-    .prepare("INSERT INTO clients (clientToken, yitApiToken) VALUES (?, ?)")
-    .run(clientToken, yitApiToken);
+export async function insertClient(clientToken: string, yitApiToken: string): Promise<void> {
+  await ensureInit();
+  const sql = getSql();
+  await sql`INSERT INTO clients ("clientToken", "yitApiToken") VALUES (${clientToken}, ${yitApiToken})`;
 }
 
 export interface ClientRow {
@@ -56,28 +60,38 @@ export interface ClientRow {
   createdAt: string;
 }
 
-export function getAllClients(): ClientRow[] {
-  const rows = getDb()
-    .prepare("SELECT clientToken, yitApiToken, createdAt FROM clients ORDER BY createdAt DESC")
-    .all() as ClientRow[];
-  return rows;
+export async function getAllClients(): Promise<ClientRow[]> {
+  await ensureInit();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT "clientToken", "yitApiToken", "createdAt"
+    FROM clients
+    ORDER BY "createdAt" DESC
+  `) as { clientToken: string; yitApiToken: string; createdAt: Date }[];
+  return rows.map(
+    (r) => ({ ...r, createdAt: r.createdAt?.toISOString?.() ?? String(r.createdAt) })
+  );
 }
 
-export function getAdminToken(): string | null {
-  const row = getDb()
-    .prepare("SELECT value FROM admin_settings WHERE key = ?")
-    .get("adminToken") as { value: string } | undefined;
+export async function getAdminToken(): Promise<string | null> {
+  await ensureInit();
+  const sql = getSql();
+  const rows = (await sql`SELECT value FROM admin_settings WHERE key = 'adminToken'`) as { value: string }[];
+  const row = rows[0];
   return row?.value ?? null;
 }
 
-export function setAdminToken(token: string): void {
-  getDb()
-    .prepare(
-      "INSERT INTO admin_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-    )
-    .run("adminToken", token);
+export async function setAdminToken(token: string): Promise<void> {
+  await ensureInit();
+  const sql = getSql();
+  await sql`
+    INSERT INTO admin_settings (key, value) VALUES ('adminToken', ${token})
+    ON CONFLICT (key) DO UPDATE SET value = ${token}
+  `;
 }
 
-export function deleteClient(clientToken: string): void {
-  getDb().prepare("DELETE FROM clients WHERE clientToken = ?").run(clientToken);
+export async function deleteClient(clientToken: string): Promise<void> {
+  await ensureInit();
+  const sql = getSql();
+  await sql`DELETE FROM clients WHERE "clientToken" = ${clientToken}`;
 }

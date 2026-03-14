@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllClients, getAdminToken, deleteClient } from "@/lib/db";
 
-function verifyAdmin(request: NextRequest) {
-  const adminToken = getAdminToken();
+export const dynamic = "force-dynamic";
+
+async function verifyAdmin(request: NextRequest) {
+  const adminToken = await getAdminToken();
   if (!adminToken) return { error: "טוקן אדמין לא הוגדר", status: 500 as const };
   const authHeader = request.headers.get("authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
@@ -18,10 +20,10 @@ function verifyAdmin(request: NextRequest) {
  * Returns list of all clients (clientToken, yitApiToken masked, createdAt).
  */
 export async function GET(request: NextRequest) {
-  const err = verifyAdmin(request);
+  const err = await verifyAdmin(request);
   if (err) return NextResponse.json({ error: err.error }, { status: err.status });
 
-  const clients = getAllClients();
+  const clients = await getAllClients();
 
   return NextResponse.json({
     clients: clients.map((c) => ({
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
  * Body: { clientToken: string }
  */
 export async function DELETE(request: NextRequest) {
-  const err = verifyAdmin(request);
+  const err = await verifyAdmin(request);
   if (err) return NextResponse.json({ error: err.error }, { status: err.status });
 
   const body = await request.json().catch(() => ({}));
@@ -47,6 +49,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "חסר clientToken" }, { status: 400 });
   }
 
-  deleteClient(clientToken);
+  await deleteClient(clientToken);
   return NextResponse.json({ success: true });
 }

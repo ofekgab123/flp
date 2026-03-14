@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { insertClient, clientExists, getAdminToken } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/admin/init-client
  * Header: Authorization: Bearer <admin token from /admin>
@@ -11,7 +13,7 @@ import { insertClient, clientExists, getAdminToken } from "@/lib/db";
  * the mapping in the database. Returns the generated clientToken.
  */
 export async function POST(request: NextRequest) {
-  const adminToken = getAdminToken();
+  const adminToken = await getAdminToken();
   if (!adminToken) {
     return NextResponse.json(
       { error: "טוקן אדמין לא הוגדר – יש להגדיר ב-/admin" },
@@ -50,9 +52,9 @@ export async function POST(request: NextRequest) {
   let clientToken: string;
   do {
     clientToken = randomUUID();
-  } while (clientExists(clientToken));
+  } while (await clientExists(clientToken));
 
-  insertClient(clientToken, yitApiToken);
+  await insertClient(clientToken, yitApiToken);
 
   return NextResponse.json({ clientToken }, { status: 201 });
 }

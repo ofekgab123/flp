@@ -6,10 +6,33 @@
 
 ```bash
 npm install
+cp .env.example .env.local   # וודא ש-DATABASE_URL מוגדר
 npm run dev
 ```
 
 האפליקציה תרוץ ב-`http://localhost:3000`.
+
+## מסד נתונים (Neon PostgreSQL)
+
+הפרויקט משתמש ב-Neon PostgreSQL. אחרי יצירת מסד ב-[Neon](https://neon.tech):
+
+```bash
+# אתחול טבלאות
+DATABASE_URL='postgresql://...' npm run db:init
+
+# (אופציונלי) הוספת client ברירת מחדל
+DATABASE_URL='postgresql://...' npm run db:seed
+```
+
+## פריסה ב-Vercel
+
+בוורצל: **Settings → Environment Variables** הוסף:
+
+| משתנה | ערך | הערות |
+|-------|-----|-------|
+| `DATABASE_URL` | מחרוזת החיבור מ-Neon Console | פורמט: `postgresql://user:password@host/db?sslmode=require` |
+
+וודא שהמשתנה מוגדר לכל הסביבות (Production, Preview, Development).
 
 ## API
 

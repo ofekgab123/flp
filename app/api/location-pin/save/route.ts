@@ -3,6 +3,8 @@ import { getYitApiToken } from "@/lib/db";
 import { isValidClientToken } from "@/app/location-pin/lib/yit";
 import { YIT_DEFAULT_API_URL } from "@/app/location-pin/lib/yit";
 
+export const dynamic = "force-dynamic";
+
 const ERROR_MESSAGES: Record<number, string> = {
   0: "הועבר בהצלחה",
   1: "שדה עיר חסר ($city)",
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const yitApiToken = getYitApiToken(clientToken);
+  const yitApiToken = await getYitApiToken(clientToken);
   if (!yitApiToken) {
     return NextResponse.json(
       { success: false, message: "clientToken לא קיים במערכת" },
