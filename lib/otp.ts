@@ -41,3 +41,13 @@ export function validateOtp(otp: string, otphash: string): OtpValidationResult {
 
   return { valid: true };
 }
+
+/** otp = now_utc + 300s; otphash = MD5('**' + otp + '!!') — לבניית קישורי בדיקה */
+export function generateOtpPair(): { otp: string; otphash: string } {
+  const otp = Math.floor(Date.now() / 1000) + 300;
+  const otpStr = String(otp);
+  const otphash = createHash("md5")
+    .update("**" + otpStr + "!!")
+    .digest("hex");
+  return { otp: otpStr, otphash };
+}

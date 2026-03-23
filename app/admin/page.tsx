@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Settings, Loader2, Users, RefreshCw, Trash2, FileText } from "lucide-react";
+import {
+  Settings,
+  Loader2,
+  Users,
+  RefreshCw,
+  Trash2,
+  FileText,
+  Plus,
+  FlaskConical,
+} from "lucide-react";
 import { toast } from "sonner";
 import { YIT_DEFAULT_API_URL } from "@/app/location-pin/lib/yit";
 
@@ -9,6 +18,8 @@ const YIT_BASE_URL_STORAGE_KEY = "location-pin-yitBaseUrl";
 const ADMIN_TOKEN_SESSION_KEY = "admin-token-session";
 const ADMIN_PASSWORD_SESSION_KEY = "admin-password-session";
 const ADMIN_PASSWORD = "6335";
+const LFP_PUBLIC_BASE_URL = "https://lfp.pickmep.co.il";
+const DEFAULT_TEST_CLIENT_TOKEN = "d5f53356-c5df-4849-8c22-8fe560b9023a";
 
 interface ClientItem {
   clientToken: string;
@@ -53,9 +64,14 @@ export default function AdminPage() {
   const [adminPassword, setAdminPassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [unlocked, setUnlocked] = useState(false);
-  const [activeTab, setActiveTab] = useState<"settings" | "requests">("settings");
+  const [activeTab, setActiveTab] = useState<"settings" | "requests" | "test">("settings");
   const [requests, setRequests] = useState<SaveRequestItem[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [testCity, setTestCity] = useState("");
+  const [testStreet, setTestStreet] = useState("");
+  const [testHouse, setTestHouse] = useState("");
+  const [testClientToken, setTestClientToken] = useState(DEFAULT_TEST_CLIENT_TOKEN);
+  const [testOpenLoading, setTestOpenLoading] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -76,10 +92,22 @@ export default function AdminPage() {
       .catch(() => setTokenExists(false));
   }, [isMounted]);
 
+  const getAdminAuthToken = useCallback(() => {
+    if (typeof window === "undefined") return "";
+    return (
+      sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY)?.trim() ||
+      addClientAdminToken.trim() ||
+      viewToken.trim() ||
+      adminToken.trim()
+    );
+  }, [addClientAdminToken, viewToken, adminToken]);
+
   const fetchRequests = useCallback(async () => {
-    const token = typeof window !== "undefined" ? sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY) : null;
+    const token = getAdminAuthToken();
     if (!token) {
-      toast.error("הזן טוקן אדמין לצפייה בבקשות");
+      toast.error(
+        'הזן טוקן אדמין: לחץ "שמור טוקן אדמין" או הזן בשדה "טוקן אדמין לצפייה" בטבלת הלקוחות ולחץ "הצג לקוחות"'
+      );
       return;
     }
     setRequestsLoading(true);
@@ -89,6 +117,11 @@ export default function AdminPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        try {
+          sessionStorage.setItem(ADMIN_TOKEN_SESSION_KEY, token);
+        } catch {
+          /* ignore */
+        }
         setRequests(data.requests ?? []);
       } else {
         setRequests([]);
@@ -100,12 +133,62 @@ export default function AdminPage() {
     } finally {
       setRequestsLoading(false);
     }
-  }, []);
+  }, [getAdminAuthToken]);
+
+  const handleOpenTestLfp = async () => {
+    const token = getAdminAuthToken();
+    if (!token) {
+      toast.error(
+        "הזן טוקן אדמין (שמירה למעלה או שדה הצפייה בלקוחות) לפני פתיחת הקישור"
+      );
+      return;
+    }
+    const city = testCity.trim();
+    const street = testStreet.trim();
+    if (!city || !street) {
+      toast.error("הזן עיר ורחוב");
+      return;
+    }
+    setTestOpenLoading(true);
+    try {
+      const res = await fetch("/api/admin/build-location-pin-url", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          clientToken: testClientToken.trim() || DEFAULT_TEST_CLIENT_TOKEN,
+          city,
+          street,
+          house: testHouse.trim() || undefined,
+          baseUrl: LFP_PUBLIC_BASE_URL,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        try {
+          sessionStorage.setItem(ADMIN_TOKEN_SESSION_KEY, token);
+        } catch {
+          /* ignore */
+        }
+        window.open(data.url as string, "_blank", "noopener,noreferrer");
+      } else {
+        toast.error(data.error || "שגיאה ביצירת הקישור");
+      }
+    } catch {
+      toast.error("שגיאה ביצירת הקישור");
+    } finally {
+      setTestOpenLoading(false);
+    }
+  };
 
   const fetchClients = useCallback(async () => {
-    const token = typeof window !== "undefined" ? sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY) : null;
+    const token = getAdminAuthToken();
     if (!token) {
-      toast.error("הזן טוקן אדמין לצפייה בלקוחות");
+      toast.error(
+        'הזן טוקן אדמין: "שמור טוקן אדמין" או שדה "הצג לקוחות" ואז רענן'
+      );
       return;
     }
     setClientsLoading(true);
@@ -115,6 +198,11 @@ export default function AdminPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        try {
+          sessionStorage.setItem(ADMIN_TOKEN_SESSION_KEY, token);
+        } catch {
+          /* ignore */
+        }
         setClients(data.clients ?? []);
       } else {
         setClients([]);
@@ -126,7 +214,7 @@ export default function AdminPage() {
     } finally {
       setClientsLoading(false);
     }
-  }, []);
+  }, [getAdminAuthToken]);
 
   useEffect(() => {
     if (!isMounted || typeof window === "undefined") return;
@@ -252,7 +340,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteClient = async (clientToken: string) => {
-    const token = sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY);
+    const token = getAdminAuthToken();
     if (!token) {
       toast.error("הזן טוקן אדמין לצפייה בלקוחות");
       return;
@@ -374,6 +462,18 @@ export default function AdminPage() {
             <FileText className="h-4 w-4" />
             בקשות
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("test")}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition ${
+              activeTab === "test"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-slate-600 hover:text-slate-800"
+            }`}
+          >
+            <FlaskConical className="h-4 w-4" />
+            בדיקה
+          </button>
         </div>
 
         {activeTab === "requests" ? (
@@ -383,7 +483,9 @@ export default function AdminPage() {
               היסטוריית בקשות שמירת מיקום
             </h2>
             <p className="mb-4 text-sm text-slate-500">
-              רשימת הבקשות שנשלחו מ-LFP, עם clientToken, פרמטרים, טוקן YIT (מקוצר), סטטוס ותאריך.
+              רשימת הבקשות שנשלחו מ-LFP, עם clientToken, פרמטרים, טוקן YIT (מקוצר), סטטוס ותאריך.               נדרש אותו טוקן
+              אדמין כמו לטבלת לקוחות: אם אין נתונים, הזן טוקן בשדה "הצג לקוחות" בטאב הגדרות ולחץ "הצג לקוחות",
+              או "שמור טוקן אדמין".
             </p>
             <div className="mb-4">
               <button
@@ -409,10 +511,19 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {requests.length === 0 && !requestsLoading ? (
+                  {requestsLoading ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
-                        אין בקשות
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          טוען…
+                        </span>
+                      </td>
+                    </tr>
+                  ) : requests.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
+                        אין בקשות רשומות (או שעדיין לא נשמרה בקשה במסד)
                       </td>
                     </tr>
                   ) : (
@@ -454,6 +565,77 @@ export default function AdminPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        ) : activeTab === "test" ? (
+          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-slate-800">
+              <FlaskConical className="h-5 w-5 text-slate-600" />
+              בדיקת LFP ({LFP_PUBLIC_BASE_URL.replace(/^https:\/\//, "")})
+            </h2>
+            <p className="mb-4 text-sm text-slate-500">
+              הזן עיר, רחוב ומספר בית. בלחיצה על הפלוס נבנה קישור עם clientToken, otp ו-otphash תקפים, והדפדפן
+              יפתח את מסך דקירת המיקום ב-production.
+            </p>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="min-w-[140px] flex-1">
+                <label className="mb-1 block text-xs font-medium text-slate-600">clientToken</label>
+                <input
+                  type="text"
+                  value={testClientToken}
+                  onChange={(e) => setTestClientToken(e.target.value)}
+                  placeholder={DEFAULT_TEST_CLIENT_TOKEN}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  dir="ltr"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="min-w-[120px] flex-1">
+                <label className="mb-1 block text-xs font-medium text-slate-600">עיר</label>
+                <input
+                  type="text"
+                  value={testCity}
+                  onChange={(e) => setTestCity(e.target.value)}
+                  placeholder="למשל תל אביב"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="min-w-[120px] flex-1">
+                <label className="mb-1 block text-xs font-medium text-slate-600">רחוב</label>
+                <input
+                  type="text"
+                  value={testStreet}
+                  onChange={(e) => setTestStreet(e.target.value)}
+                  placeholder="שם רחוב"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="min-w-[100px] flex-1 sm:max-w-[140px]">
+                <label className="mb-1 block text-xs font-medium text-slate-600">מספר</label>
+                <input
+                  type="text"
+                  value={testHouse}
+                  onChange={(e) => setTestHouse(e.target.value)}
+                  placeholder="מס׳ בית"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  autoComplete="off"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenTestLfp}
+                disabled={testOpenLoading}
+                title="פתח קישור בדיקה"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 sm:h-[42px]"
+              >
+                {testOpenLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Plus className="h-6 w-6" strokeWidth={2.5} />
+                )}
+              </button>
             </div>
           </div>
         ) : (
