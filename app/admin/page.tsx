@@ -18,7 +18,7 @@ const YIT_BASE_URL_STORAGE_KEY = "location-pin-yitBaseUrl";
 const ADMIN_TOKEN_SESSION_KEY = "admin-token-session";
 const ADMIN_PASSWORD_SESSION_KEY = "admin-password-session";
 const ADMIN_PASSWORD = "6335";
-const LFP_PUBLIC_BASE_URL = "https://lfp.pickmep.co.il";
+const LFP_PUBLIC_BASE_URL = "https://api.pickmeup.co.il";
 const DEFAULT_TEST_CLIENT_TOKEN = "d5f53356-c5df-4849-8c22-8fe560b9023a";
 
 interface ClientItem {

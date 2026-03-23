@@ -5,7 +5,7 @@ import { isValidClientToken } from "@/app/location-pin/lib/yit";
 
 export const dynamic = "force-dynamic";
 
-const DEFAULT_LFP_BASE = "https://lfp.pickmep.co.il";
+const DEFAULT_LFP_BASE = "https://api.pickmeup.co.il";
 
 async function verifyAdmin(request: NextRequest) {
   const adminToken = await getAdminToken();
