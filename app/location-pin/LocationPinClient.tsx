@@ -10,6 +10,14 @@ const DEFAULT_CENTER: [number, number] = [32.0853, 34.7818]; // Tel Aviv
 const DEFAULT_ADDRESS = "דיזנגוף 150, תל אביב";
 const YIT_BASE_URL_STORAGE_KEY = "location-pin-yitBaseUrl";
 
+const NOMINATIM_HEADERS: HeadersInit = {
+  Accept: "application/json",
+  "Accept-Language": "he,he-IL;q=0.9,en;q=0.8",
+  "User-Agent": "flp-location-pin/1.0",
+};
+
+const NOMINATIM_LANG = "accept-language=he";
+
 export default function LocationPinClient() {
   const [editableAddress, setEditableAddress] = useState(DEFAULT_ADDRESS);
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(
@@ -53,8 +61,8 @@ export default function LocationPinClient() {
     setIsLoading(true);
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}, Israel&format=json&limit=1`,
-        { headers: { Accept: "application/json" } }
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}, Israel&format=json&limit=1&${NOMINATIM_LANG}`,
+        { headers: NOMINATIM_HEADERS }
       );
       const data = await res.json();
       if (data && data.length > 0) {
@@ -67,6 +75,22 @@ export default function LocationPinClient() {
       }
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&${NOMINATIM_LANG}`,
+        { headers: NOMINATIM_HEADERS }
+      );
+      const data = await res.json();
+      const name = data?.display_name;
+      if (typeof name === "string" && name.trim()) {
+        setEditableAddress(name.trim());
+      }
+    } catch {
+      /* ignore reverse failures */
     }
   }, []);
 
@@ -250,6 +274,7 @@ export default function LocationPinClient() {
           position={position}
           onLocationSelect={(lat, lng) => {
             setPosition({ lat, lng });
+            void reverseGeocode(lat, lng);
           }}
           isLoading={isLoading}
         />
