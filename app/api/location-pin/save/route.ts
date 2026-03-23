@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getYitApiToken, insertSaveRequest } from "@/lib/db";
+import { getYitApiToken } from "@/lib/db";
 import { isValidClientToken } from "@/app/location-pin/lib/yit";
 import { YIT_DEFAULT_API_URL } from "@/app/location-pin/lib/yit";
 
@@ -86,46 +86,11 @@ export async function POST(request: NextRequest) {
   const apiUrl =
     (process.env.YIT_API_URL ?? "").trim() || YIT_DEFAULT_API_URL;
 
-  const yitApiTokenMasked =
-    yitApiToken.length >= 8 ? yitApiToken.slice(0, 8) + "..." : "***";
-
-  const logRequest = async (
-    status: "not_sent" | "sent" | "approved" | "rejected",
-    yitResponse?: Record<string, unknown> | null
-  ): Promise<boolean> => {
-    try {
-      await insertSaveRequest({
-        clientToken,
-        city,
-        street,
-        house: house || undefined,
-        lat,
-        lng,
-        yitApiTokenMasked,
-        status,
-        yitResponse: yitResponse ?? undefined,
-      });
-      return true;
-    } catch (e) {
-      console.error("[location-pin/save] Failed to log request:", e);
-      return false;
-    }
-  };
-
   if (process.env.MOCK_YIT === "true") {
-    const requestLogPersisted = await logRequest("not_sent", {
-      _mock: true,
-      city,
-      street,
-      house,
-      lat,
-      lng,
-    });
     return NextResponse.json({
       success: true,
       message: "הועבר בהצלחה (מצב פיתוח – לא נשלח ל-YIT)",
       fullResponse: { _mock: true, city, street, house, lat, lng },
-      requestLogPersisted,
     });
   }
 
@@ -158,17 +123,11 @@ export async function POST(request: NextRequest) {
     try {
       fullResponse = text ? JSON.parse(text) : {};
     } catch {
-      const requestLogPersisted = await logRequest("rejected", {
-        error: "תשובה לא צפויה",
-        status: response.status,
-        bodyPreview: text?.slice(0, 500),
-      });
       return NextResponse.json(
         {
           success: false,
           message: "תשובה לא צפויה משרת YIT",
           fullResponse: { status: response.status, bodyPreview: text?.slice(0, 100) },
-          requestLogPersisted,
         },
         { status: 502 }
       );
@@ -179,27 +138,17 @@ export async function POST(request: NextRequest) {
       fullResponse.message ?? ERROR_MESSAGES[code] ?? "שגיאה לא ידועה";
     const success = code === 0 || fullResponse.isSuccess === true;
 
-    const requestLogPersisted = await logRequest(
-      success ? "approved" : "rejected",
-      fullResponse
-    );
-
     return NextResponse.json({
       success,
       message,
       fullResponse,
-      requestLogPersisted,
     });
   } catch (err) {
-    const requestLogPersisted = await logRequest("rejected", {
-      error: err instanceof Error ? err.message : String(err),
-    });
     return NextResponse.json(
       {
         success: false,
         message: "שגיאת תקשורת עם YIT",
         fullResponse: err instanceof Error ? err.message : String(err),
-        requestLogPersisted,
       },
       { status: 502 }
     );
