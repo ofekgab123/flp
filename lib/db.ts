@@ -29,6 +29,21 @@ async function ensureInit() {
         value TEXT NOT NULL
       )
     `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS save_requests (
+        id SERIAL PRIMARY KEY,
+        "clientToken" TEXT NOT NULL,
+        city TEXT NOT NULL,
+        street TEXT NOT NULL,
+        house TEXT,
+        lat DOUBLE PRECISION NOT NULL,
+        lng DOUBLE PRECISION NOT NULL,
+        "yitApiTokenMasked" TEXT NOT NULL,
+        status TEXT NOT NULL,
+        "yitResponse" TEXT,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
     _initDone = true;
   }
 }
@@ -94,4 +109,53 @@ export async function deleteClient(clientToken: string): Promise<void> {
   await ensureInit();
   const sql = getSql();
   await sql`DELETE FROM clients WHERE "clientToken" = ${clientToken}`;
+}
+
+export interface SaveRequestRow {
+  id: number;
+  clientToken: string;
+  city: string;
+  street: string;
+  house: string | null;
+  lat: number;
+  lng: number;
+  yitApiTokenMasked: string;
+  status: string;
+  yitResponse: string | null;
+  createdAt: string;
+}
+
+export async function insertSaveRequest(params: {
+  clientToken: string;
+  city: string;
+  street: string;
+  house?: string;
+  lat: number;
+  lng: number;
+  yitApiTokenMasked: string;
+  status: "not_sent" | "sent" | "approved" | "rejected";
+  yitResponse?: Record<string, unknown> | null;
+}): Promise<void> {
+  await ensureInit();
+  const sql = getSql();
+  const yitResponseStr = params.yitResponse != null ? JSON.stringify(params.yitResponse) : null;
+  await sql`
+    INSERT INTO save_requests ("clientToken", city, street, house, lat, lng, "yitApiTokenMasked", status, "yitResponse")
+    VALUES (${params.clientToken}, ${params.city}, ${params.street}, ${params.house ?? ""}, ${params.lat}, ${params.lng}, ${params.yitApiTokenMasked}, ${params.status}, ${yitResponseStr})
+  `;
+}
+
+export async function getAllSaveRequests(): Promise<SaveRequestRow[]> {
+  await ensureInit();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT id, "clientToken", city, street, house, lat, lng, "yitApiTokenMasked", status, "yitResponse", "createdAt"
+    FROM save_requests
+    ORDER BY "createdAt" DESC
+    LIMIT 500
+  `) as (SaveRequestRow & { createdAt: Date })[];
+  return rows.map((r) => ({
+    ...r,
+    createdAt: r.createdAt?.toISOString?.() ?? String(r.createdAt),
+  }));
 }

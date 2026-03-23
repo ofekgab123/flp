@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Settings, Loader2, Users, RefreshCw, Trash2 } from "lucide-react";
+import { Settings, Loader2, Users, RefreshCw, Trash2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { YIT_DEFAULT_API_URL } from "@/app/location-pin/lib/yit";
 
@@ -15,6 +15,27 @@ interface ClientItem {
   yitApiToken: string;
   createdAt: string;
 }
+
+interface SaveRequestItem {
+  id: number;
+  clientToken: string;
+  city: string;
+  street: string;
+  house: string | null;
+  lat: number;
+  lng: number;
+  yitApiTokenMasked: string;
+  status: string;
+  yitResponse: string | null;
+  createdAt: string;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  not_sent: "לא נשלחה",
+  sent: "נשלחה",
+  approved: "אושר",
+  rejected: "לא אושר",
+};
 
 export default function AdminPage() {
   const [yitBaseUrl, setYitBaseUrl] = useState(YIT_DEFAULT_API_URL);
@@ -32,6 +53,9 @@ export default function AdminPage() {
   const [adminPassword, setAdminPassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [unlocked, setUnlocked] = useState(false);
+  const [activeTab, setActiveTab] = useState<"settings" | "requests">("settings");
+  const [requests, setRequests] = useState<SaveRequestItem[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -51,6 +75,32 @@ export default function AdminPage() {
       .then((data) => setTokenExists(!!data.exists))
       .catch(() => setTokenExists(false));
   }, [isMounted]);
+
+  const fetchRequests = useCallback(async () => {
+    const token = typeof window !== "undefined" ? sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY) : null;
+    if (!token) {
+      toast.error("הזן טוקן אדמין לצפייה בבקשות");
+      return;
+    }
+    setRequestsLoading(true);
+    try {
+      const res = await fetch("/api/admin/requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setRequests(data.requests ?? []);
+      } else {
+        setRequests([]);
+        toast.error(data.error || "שגיאה בטעינת בקשות");
+      }
+    } catch {
+      setRequests([]);
+      toast.error("שגיאה בטעינת בקשות");
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
 
   const fetchClients = useCallback(async () => {
     const token = typeof window !== "undefined" ? sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY) : null;
@@ -296,6 +346,117 @@ export default function AdminPage() {
           </button>
         </div>
 
+        <div className="mb-6 flex gap-2 border-b border-slate-200">
+          <button
+            type="button"
+            onClick={() => setActiveTab("settings")}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition ${
+              activeTab === "settings"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-slate-600 hover:text-slate-800"
+            }`}
+          >
+            <Settings className="h-4 w-4" />
+            הגדרות
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("requests");
+              fetchRequests();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition ${
+              activeTab === "requests"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-slate-600 hover:text-slate-800"
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            בקשות
+          </button>
+        </div>
+
+        {activeTab === "requests" ? (
+          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-800">
+              <FileText className="h-5 w-5 text-slate-600" />
+              היסטוריית בקשות שמירת מיקום
+            </h2>
+            <p className="mb-4 text-sm text-slate-500">
+              רשימת הבקשות שנשלחו מ-LFP, עם clientToken, פרמטרים, טוקן YIT (מקוצר), סטטוס ותאריך.
+            </p>
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={fetchRequests}
+                disabled={requestsLoading}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {requestsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                רענן
+              </button>
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="px-3 py-2 text-right font-medium text-slate-700">תאריך</th>
+                    <th className="px-3 py-2 text-right font-medium text-slate-700">clientToken</th>
+                    <th className="px-3 py-2 text-right font-medium text-slate-700">עיר / רחוב / בית</th>
+                    <th className="px-3 py-2 text-right font-medium text-slate-700">קואורדינטות</th>
+                    <th className="px-3 py-2 text-right font-medium text-slate-700">טוקן YIT</th>
+                    <th className="px-3 py-2 text-right font-medium text-slate-700">סטטוס</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests.length === 0 && !requestsLoading ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
+                        אין בקשות
+                      </td>
+                    </tr>
+                  ) : (
+                    requests.map((r) => (
+                      <tr key={r.id} className="border-b border-slate-100 last:border-0">
+                        <td className="px-3 py-2 text-slate-600" dir="ltr">
+                          {new Date(r.createdAt).toLocaleString("he-IL")}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-slate-800" dir="ltr">
+                          {r.clientToken}
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          {r.city} / {r.street}
+                          {r.house ? ` / ${r.house}` : ""}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-slate-600" dir="ltr">
+                          {r.lat.toFixed(6)}, {r.lng.toFixed(6)}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-slate-600" dir="ltr">
+                          {r.yitApiTokenMasked}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
+                              r.status === "approved"
+                                ? "bg-green-100 text-green-800"
+                                : r.status === "rejected"
+                                  ? "bg-red-100 text-red-800"
+                                  : r.status === "not_sent"
+                                    ? "bg-slate-100 text-slate-700"
+                                    : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {STATUS_LABELS[r.status] ?? r.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-6">
           {/* YIT Base URL */}
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -523,8 +684,9 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

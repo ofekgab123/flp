@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getYitApiToken } from "@/lib/db";
+import { getYitApiToken, insertSaveRequest } from "@/lib/db";
 import { isValidClientToken } from "@/app/location-pin/lib/yit";
 import { YIT_DEFAULT_API_URL } from "@/app/location-pin/lib/yit";
 
@@ -86,7 +86,29 @@ export async function POST(request: NextRequest) {
   const apiUrl =
     (process.env.YIT_API_URL ?? "").trim() || YIT_DEFAULT_API_URL;
 
+  const yitApiTokenMasked =
+    yitApiToken.length >= 8 ? yitApiToken.slice(0, 8) + "..." : "***";
+
+  const logRequest = async (status: "not_sent" | "sent" | "approved" | "rejected", yitResponse?: Record<string, unknown>) => {
+    try {
+      await insertSaveRequest({
+        clientToken,
+        city,
+        street,
+        house: house || undefined,
+        lat,
+        lng,
+        yitApiTokenMasked,
+        status,
+        yitResponse,
+      });
+    } catch (e) {
+      console.error("[location-pin/save] Failed to log request:", e);
+    }
+  };
+
   if (process.env.MOCK_YIT === "true") {
+    await logRequest("not_sent", { _mock: true, city, street, house, lat, lng });
     return NextResponse.json({
       success: true,
       message: "הועבר בהצלחה (מצב פיתוח – לא נשלח ל-YIT)",
@@ -111,8 +133,9 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: formData.toString(),
     });
-
     const text = await response.text();
+    console.log("[location-pin/save] YIT full response:", text);
+
     let fullResponse: {
       isSuccess?: boolean;
       message?: string;
@@ -122,6 +145,11 @@ export async function POST(request: NextRequest) {
     try {
       fullResponse = text ? JSON.parse(text) : {};
     } catch {
+      await logRequest("rejected", {
+        error: "תשובה לא צפויה",
+        status: response.status,
+        bodyPreview: text?.slice(0, 500),
+      });
       return NextResponse.json(
         {
           success: false,
@@ -137,12 +165,17 @@ export async function POST(request: NextRequest) {
       fullResponse.message ?? ERROR_MESSAGES[code] ?? "שגיאה לא ידועה";
     const success = code === 0 || fullResponse.isSuccess === true;
 
+    await logRequest(success ? "approved" : "rejected", fullResponse);
+
     return NextResponse.json({
       success,
       message,
       fullResponse,
     });
   } catch (err) {
+    await logRequest("rejected", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json(
       {
         success: false,

@@ -26,7 +26,22 @@ async function main() {
       value TEXT NOT NULL
     )
   `;
-  console.log("✓ טבלאות clients ו-admin_settings נוצרו/קיימות");
+  await sql`
+    CREATE TABLE IF NOT EXISTS save_requests (
+      id SERIAL PRIMARY KEY,
+      "clientToken" TEXT NOT NULL,
+      city TEXT NOT NULL,
+      street TEXT NOT NULL,
+      house TEXT,
+      lat DOUBLE PRECISION NOT NULL,
+      lng DOUBLE PRECISION NOT NULL,
+      "yitApiTokenMasked" TEXT NOT NULL,
+      status TEXT NOT NULL,
+      "yitResponse" TEXT,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+  console.log("✓ טבלאות clients, admin_settings, save_requests נוצרו/קיימות");
 }
 
 main().catch((err) => {
