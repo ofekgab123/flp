@@ -23,6 +23,18 @@ export async function GET(request: NextRequest) {
   const err = await verifyAdmin(request);
   if (err) return NextResponse.json({ error: err.error }, { status: err.status });
 
-  const requests = await getAllSaveRequests();
-  return NextResponse.json({ requests });
+  try {
+    const requests = await getAllSaveRequests();
+    return NextResponse.json({ requests, total: requests.length });
+  } catch (e) {
+    console.error("[admin/requests] getAllSaveRequests:", e);
+    return NextResponse.json(
+      {
+        error: e instanceof Error ? e.message : "שגיאת מסד נתונים",
+        requests: [],
+        total: 0,
+      },
+      { status: 500 }
+    );
+  }
 }

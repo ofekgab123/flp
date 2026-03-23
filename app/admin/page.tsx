@@ -72,10 +72,16 @@ export default function AdminPage() {
   const [testHouse, setTestHouse] = useState("");
   const [testClientToken, setTestClientToken] = useState(DEFAULT_TEST_CLIENT_TOKEN);
   const [testOpenLoading, setTestOpenLoading] = useState(false);
+  const [appOrigin, setAppOrigin] = useState("");
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted || typeof window === "undefined") return;
+    setAppOrigin(window.location.origin);
+  }, [isMounted]);
 
   useEffect(() => {
     if (!isMounted || typeof window === "undefined") return;
@@ -113,6 +119,7 @@ export default function AdminPage() {
     setRequestsLoading(true);
     try {
       const res = await fetch("/api/admin/requests", {
+        cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
@@ -482,12 +489,21 @@ export default function AdminPage() {
               <FileText className="h-5 w-5 text-slate-600" />
               היסטוריית בקשות שמירת מיקום
             </h2>
-            <p className="mb-4 text-sm text-slate-500">
-              רשימת הבקשות שנשלחו מ-LFP, עם clientToken, פרמטרים, טוקן YIT (מקוצר), סטטוס ותאריך.               נדרש אותו טוקן
+            <p className="mb-3 text-sm text-slate-500">
+              רשימת הבקשות שנשלחו מ-LFP, עם clientToken, פרמטרים, טוקן YIT (מקוצר), סטטוס ותאריך. נדרש אותו טוקן
               אדמין כמו לטבלת לקוחות: אם אין נתונים, הזן טוקן בשדה "הצג לקוחות" בטאב הגדרות ולחץ "הצג לקוחות",
               או "שמור טוקן אדמין".
             </p>
-            <div className="mb-4">
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              <span className="font-medium">מאיפה הנתונים: </span>
+              {appOrigin || "…"} — הבקשות נקראות מהמסד של <strong>המופע הזה בלבד</strong> (אותו{" "}
+              <code className="rounded bg-amber-100 px-1 text-xs" dir="ltr">
+                DATABASE_URL
+              </code>{" "}
+              כמו בשרת שמקבל את שמירת המיקום). אם שמרת מיקום מדומיין אחר (למשל production) ואתה פותח אדמין
+              מ-localhost או להפך, הטבלה כאן תישאר ריקה.
+            </div>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={fetchRequests}
@@ -497,6 +513,9 @@ export default function AdminPage() {
                 {requestsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 רענן
               </button>
+              {!requestsLoading && (
+                <span className="text-sm text-slate-500">רשומות במסד (מופע זה): {requests.length}</span>
+              )}
             </div>
             <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="w-full text-sm">
@@ -540,7 +559,9 @@ export default function AdminPage() {
                           {r.house ? ` / ${r.house}` : ""}
                         </td>
                         <td className="px-3 py-2 font-mono text-xs text-slate-600" dir="ltr">
-                          {r.lat.toFixed(6)}, {r.lng.toFixed(6)}
+                          {Number.isFinite(r.lat) && Number.isFinite(r.lng)
+                            ? `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}`
+                            : "—"}
                         </td>
                         <td className="px-3 py-2 font-mono text-xs text-slate-600" dir="ltr">
                           {r.yitApiTokenMasked}

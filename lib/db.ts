@@ -145,6 +145,68 @@ export async function insertSaveRequest(params: {
   `;
 }
 
+function pickRowField(row: Record<string, unknown>, camel: string, lower: string): unknown {
+  if (row[camel] !== undefined && row[camel] !== null) return row[camel];
+  if (row[lower] !== undefined && row[lower] !== null) return row[lower];
+  return undefined;
+}
+
+/** מנרמל תוצאת pg/Neon (לעיתים שמות עמודות באותיות קטנות) */
+function normalizeSaveRequestRow(row: Record<string, unknown>): SaveRequestRow {
+  const idRaw = pickRowField(row, "id", "id");
+  const id = typeof idRaw === "number" ? idRaw : Number(idRaw ?? 0);
+
+  const clientToken = String(pickRowField(row, "clientToken", "clienttoken") ?? "");
+  const city = String(pickRowField(row, "city", "city") ?? "");
+  const street = String(pickRowField(row, "street", "street") ?? "");
+  const houseRaw = pickRowField(row, "house", "house");
+  const house = houseRaw == null || houseRaw === "" ? null : String(houseRaw);
+
+  const latRaw = pickRowField(row, "lat", "lat");
+  const lngRaw = pickRowField(row, "lng", "lng");
+  const lat = typeof latRaw === "number" ? latRaw : Number(latRaw ?? NaN);
+  const lng = typeof lngRaw === "number" ? lngRaw : Number(lngRaw ?? NaN);
+
+  const yitApiTokenMasked = String(
+    pickRowField(row, "yitApiTokenMasked", "yitapitokenmasked") ?? ""
+  );
+  const status = String(pickRowField(row, "status", "status") ?? "");
+  const yitResponseRaw = pickRowField(row, "yitResponse", "yitresponse");
+  let yitResponse: string | null;
+  if (yitResponseRaw == null) {
+    yitResponse = null;
+  } else if (typeof yitResponseRaw === "string") {
+    yitResponse = yitResponseRaw;
+  } else {
+    yitResponse = JSON.stringify(yitResponseRaw);
+  }
+
+  const createdRaw = pickRowField(row, "createdAt", "createdat");
+  let createdAt: string;
+  if (createdRaw instanceof Date) {
+    createdAt = createdRaw.toISOString();
+  } else if (typeof createdRaw === "string" || typeof createdRaw === "number") {
+    const d = new Date(createdRaw);
+    createdAt = isNaN(d.getTime()) ? String(createdRaw) : d.toISOString();
+  } else {
+    createdAt = "";
+  }
+
+  return {
+    id,
+    clientToken,
+    city,
+    street,
+    house,
+    lat,
+    lng,
+    yitApiTokenMasked,
+    status,
+    yitResponse,
+    createdAt,
+  };
+}
+
 export async function getAllSaveRequests(): Promise<SaveRequestRow[]> {
   await ensureInit();
   const sql = getSql();
@@ -153,9 +215,6 @@ export async function getAllSaveRequests(): Promise<SaveRequestRow[]> {
     FROM save_requests
     ORDER BY "createdAt" DESC
     LIMIT 500
-  `) as (SaveRequestRow & { createdAt: Date })[];
-  return rows.map((r) => ({
-    ...r,
-    createdAt: r.createdAt?.toISOString?.() ?? String(r.createdAt),
-  }));
+  `) as Record<string, unknown>[];
+  return rows.map((r) => normalizeSaveRequestRow(r));
 }
