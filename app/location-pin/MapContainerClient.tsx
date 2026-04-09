@@ -90,16 +90,8 @@ export function MapContainerClient({
         onUnmount={onUnmount}
         onClick={handleClick}
         options={{
-          mapTypeId: google.maps.MapTypeId.HYBRID,
-          mapTypeControl: true,
-          mapTypeControlOptions: {
-            position: google.maps.ControlPosition.TOP_LEFT,
-            mapTypeIds: [
-              google.maps.MapTypeId.ROADMAP,
-              google.maps.MapTypeId.SATELLITE,
-              google.maps.MapTypeId.HYBRID,
-            ],
-          },
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
+          mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: true,
         }}
