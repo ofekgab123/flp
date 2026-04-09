@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import { GOOGLE_MAPS_API_KEY } from "./lib/googleMapsConfig";
 
 type MapContainerClientProps = {
   center: [number, number];
@@ -12,9 +13,6 @@ type MapContainerClientProps = {
 };
 
 const mapContainerStyle = { width: "100%", height: "100%" };
-
-/** Google Maps JS API (client key; restrict by HTTP referrer in Cloud Console). */
-const GOOGLE_MAPS_API_KEY = "AIzaSyApUhkvnyJe4bPKIv8BquWpaIbMcjgcZQM";
 
 export function MapContainerClient({
   center,

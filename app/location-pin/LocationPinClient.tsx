@@ -5,19 +5,14 @@ import { MapPin, Loader2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainerClient } from "./MapContainerClient";
 import { YIT_DEFAULT_API_URL, isValidClientToken } from "./lib/yit";
-import { expandIsraeliCityAlias } from "./lib/israeliCityAliases";
+import {
+  googleGeocodeForward,
+  googleGeocodeReverse,
+} from "./lib/googleGeocoding";
 
 const DEFAULT_CENTER: [number, number] = [32.0853, 34.7818]; // Tel Aviv
 const DEFAULT_ADDRESS = "דיזנגוף 150, תל אביב";
 const YIT_BASE_URL_STORAGE_KEY = "location-pin-yitBaseUrl";
-
-const NOMINATIM_HEADERS: HeadersInit = {
-  Accept: "application/json",
-  "Accept-Language": "he,he-IL;q=0.9,en;q=0.8",
-  "User-Agent": "flp-location-pin/1.0",
-};
-
-const NOMINATIM_LANG = "accept-language=he";
 
 export default function LocationPinClient() {
   const [editableAddress, setEditableAddress] = useState(DEFAULT_ADDRESS);
@@ -35,7 +30,6 @@ export default function LocationPinClient() {
   const isAdmin = urlParams?.get("admin") != null && urlParams?.get("admin") !== "false";
   const clientToken = urlParams?.get("clientToken") ?? "";
   const city = urlParams?.get("$city") ?? urlParams?.get("city") ?? "";
-  const cityResolved = expandIsraeliCityAlias(city);
   const street = urlParams?.get("$street") ?? urlParams?.get("street") ?? "";
   const house = urlParams?.get("$house") ?? urlParams?.get("house") ?? "";
 
@@ -62,18 +56,10 @@ export default function LocationPinClient() {
     if (!addr) return;
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}, Israel&format=json&limit=1&${NOMINATIM_LANG}`,
-        { headers: NOMINATIM_HEADERS }
-      );
-      const data = await res.json();
-      if (data && data.length > 0) {
-        const lat = parseFloat(data[0].lat);
-        const lng = parseFloat(data[0].lon);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          setPosition({ lat, lng });
-          setMapCenter([lat, lng]);
-        }
+      const result = await googleGeocodeForward(addr);
+      if (result) {
+        setPosition({ lat: result.lat, lng: result.lng });
+        setMapCenter([result.lat, result.lng]);
       }
     } finally {
       setIsLoading(false);
@@ -82,14 +68,9 @@ export default function LocationPinClient() {
 
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&${NOMINATIM_LANG}`,
-        { headers: NOMINATIM_HEADERS }
-      );
-      const data = await res.json();
-      const name = data?.display_name;
-      if (typeof name === "string" && name.trim()) {
-        setEditableAddress(name.trim());
+      const formatted = await googleGeocodeReverse(lat, lng);
+      if (formatted) {
+        setEditableAddress(formatted);
       }
     } catch {
       /* ignore reverse failures */
@@ -99,15 +80,15 @@ export default function LocationPinClient() {
   useEffect(() => {
     if (city && street) {
       const fullAddress = `${street} ${house}`.trim()
-        ? `${street} ${house}, ${cityResolved}`.trim()
-        : `${street}, ${cityResolved}`.trim();
+        ? `${street} ${house}, ${city}`.trim()
+        : `${street}, ${city}`.trim();
       setEditableAddress(fullAddress);
       geocodeAddress(fullAddress);
     } else {
       setEditableAddress(DEFAULT_ADDRESS);
       geocodeAddress(DEFAULT_ADDRESS);
     }
-  }, [city, street, house, cityResolved, geocodeAddress]);
+  }, [city, street, house, geocodeAddress]);
 
   const handleAddressSearch = () => {
     geocodeAddress(editableAddress);
@@ -142,7 +123,7 @@ export default function LocationPinClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientToken,
-          city: cityResolved,
+          city,
           street,
           house: house || undefined,
           lat: position.lat,
