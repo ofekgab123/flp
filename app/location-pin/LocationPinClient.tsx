@@ -5,6 +5,7 @@ import { MapPin, Loader2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainerClient } from "./MapContainerClient";
 import { YIT_DEFAULT_API_URL, isValidClientToken } from "./lib/yit";
+import { expandIsraeliCityAlias } from "./lib/israeliCityAliases";
 
 const DEFAULT_CENTER: [number, number] = [32.0853, 34.7818]; // Tel Aviv
 const DEFAULT_ADDRESS = "דיזנגוף 150, תל אביב";
@@ -34,6 +35,7 @@ export default function LocationPinClient() {
   const isAdmin = urlParams?.get("admin") != null && urlParams?.get("admin") !== "false";
   const clientToken = urlParams?.get("clientToken") ?? "";
   const city = urlParams?.get("$city") ?? urlParams?.get("city") ?? "";
+  const cityResolved = expandIsraeliCityAlias(city);
   const street = urlParams?.get("$street") ?? urlParams?.get("street") ?? "";
   const house = urlParams?.get("$house") ?? urlParams?.get("house") ?? "";
 
@@ -97,15 +99,15 @@ export default function LocationPinClient() {
   useEffect(() => {
     if (city && street) {
       const fullAddress = `${street} ${house}`.trim()
-        ? `${street} ${house}, ${city}`.trim()
-        : `${street}, ${city}`.trim();
+        ? `${street} ${house}, ${cityResolved}`.trim()
+        : `${street}, ${cityResolved}`.trim();
       setEditableAddress(fullAddress);
       geocodeAddress(fullAddress);
     } else {
       setEditableAddress(DEFAULT_ADDRESS);
       geocodeAddress(DEFAULT_ADDRESS);
     }
-  }, [city, street, house, geocodeAddress]);
+  }, [city, street, house, cityResolved, geocodeAddress]);
 
   const handleAddressSearch = () => {
     geocodeAddress(editableAddress);
@@ -140,7 +142,7 @@ export default function LocationPinClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientToken,
-          city,
+          city: cityResolved,
           street,
           house: house || undefined,
           lat: position.lat,
