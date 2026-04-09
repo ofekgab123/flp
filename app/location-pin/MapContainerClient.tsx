@@ -1,49 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
-import dynamic from "next/dynamic";
-import type { LatLngTuple } from "leaflet";
-
-function fixLeafletIcons() {
-  if (typeof window === "undefined") return;
-  const L = require("leaflet");
-  delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })
-    ._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-    iconUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-    shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  });
-}
-
-const MapContainerLeaflet = dynamic(
-  () => import("react-leaflet").then((m) => m.MapContainer),
-  { ssr: false }
-);
-const TileLayer = dynamic(
-  () => import("react-leaflet").then((m) => m.TileLayer),
-  { ssr: false }
-);
-const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), {
-  ssr: false,
-});
-const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), {
-  ssr: false,
-});
-
-import { MapClickHandler } from "./MapView";
-import { MapCenterUpdater } from "./MapCenterUpdater";
+import { useCallback, useEffect, useRef } from "react";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 
 type MapContainerClientProps = {
-  center: LatLngTuple;
+  center: [number, number];
   zoom?: number;
   position: { lat: number; lng: number } | null;
   onLocationSelect: (lat: number, lng: number) => void;
   isLoading?: boolean;
 };
+
+const mapContainerStyle = { width: "100%", height: "100%" };
+
+/** Google Maps JS API (client key; restrict by HTTP referrer in Cloud Console). */
+const GOOGLE_MAPS_API_KEY = "AIzaSyApUhkvnyJe4bPKIv8BquWpaIbMcjgcZQM";
 
 export function MapContainerClient({
   center,
@@ -52,35 +23,89 @@ export function MapContainerClient({
   onLocationSelect,
   isLoading = false,
 }: MapContainerClientProps) {
-  useEffect(() => {
-    fixLeafletIcons();
+  const mapRef = useRef<google.maps.Map | null>(null);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+  });
+
+  const onLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
   }, []);
+
+  const onUnmount = useCallback(() => {
+    mapRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const [lat, lng] = center;
+    map.panTo({ lat, lng });
+    map.setZoom(zoom);
+  }, [center[0], center[1], zoom]);
+
+  const handleClick = useCallback(
+    (e: google.maps.MapMouseEvent) => {
+      if (e.latLng) {
+        onLocationSelect(e.latLng.lat(), e.latLng.lng());
+      }
+    },
+    [onLocationSelect]
+  );
+
+  const centerLatLng = { lat: center[0], lng: center[1] };
+
+  if (loadError) {
+    return (
+      <div className="flex h-full min-h-[200px] w-full items-center justify-center bg-slate-100 p-4 text-center text-sm text-red-600">
+        <p>לא ניתן לטעון את Google Maps. בדקו את המפתח והרשאות ה-API.</p>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="relative flex h-full min-h-[200px] w-full items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full w-full min-h-[200px]">
       {isLoading && (
-        <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/70">
+        <div className="absolute inset-0 z-[1] flex items-center justify-center bg-white/70">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
         </div>
       )}
-      <MapContainerLeaflet
-        center={center}
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        center={centerLatLng}
         zoom={zoom}
-        className="h-full w-full"
-        scrollWheelZoom
+        onLoad={onLoad}
+        onUnmount={onUnmount}
+        onClick={handleClick}
+        options={{
+          mapTypeId: google.maps.MapTypeId.HYBRID,
+          mapTypeControl: true,
+          mapTypeControlOptions: {
+            position: google.maps.ControlPosition.TOP_LEFT,
+            mapTypeIds: [
+              google.maps.MapTypeId.ROADMAP,
+              google.maps.MapTypeId.SATELLITE,
+              google.maps.MapTypeId.HYBRID,
+            ],
+          },
+          streetViewControl: false,
+          fullscreenControl: true,
+        }}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapClickHandler onLocationSelect={onLocationSelect} />
-        <MapCenterUpdater center={[center[0], center[1]]} zoom={zoom} />
         {position && (
-          <Marker position={[position.lat, position.lng]}>
-            <Popup>נקודה נבחרת</Popup>
-          </Marker>
+          <Marker position={{ lat: position.lat, lng: position.lng }} />
         )}
-      </MapContainerLeaflet>
+      </GoogleMap>
     </div>
   );
 }
