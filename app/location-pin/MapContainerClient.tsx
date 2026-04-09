@@ -28,6 +28,8 @@ export function MapContainerClient({
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    language: "he",
+    region: "IL",
   });
 
   const onLoad = useCallback((map: google.maps.Map) => {
